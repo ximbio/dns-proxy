@@ -1,0 +1,14 @@
+[project]
+name = "DNS-PROXY"
+version = "0.1.0"
+description = "DNS Proxy acts as an intermediate layer between clients and a DNS server, applying user-defined rules such as domain blocking and redirection."
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "dnspython>=2.8.0",
+    "fastapi>=0.120.0",
+    "loguru>=0.7.3",
+    "pydantic>=2.12.3",
+    "pydantic-settings>=2.11.0",
+    "uvicorn>=0.38.0",
+]
