@@ -24,7 +24,9 @@ async def handle_client(resolver: Resolver, reader: asyncio.StreamReader, writer
             query = await reader.readexactly(length)
 
             response = await resolver.resolve(query)
-            
+            if response is None:
+                continue
+ 
             writer.write(struct.pack("!H", len(response)) + response)
             await writer.drain()
     except (asyncio.IncompleteReadError, ConnectionResetError):

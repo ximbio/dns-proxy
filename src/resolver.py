@@ -1,6 +1,7 @@
 from itertools import cycle
 
 from loguru import logger
+from dns.edns import ECSOption
 import dns.message
 import dns.exception
 import dns.rcode
@@ -46,9 +47,16 @@ class Resolver:
 
     async def _proxy_response(self, message: dns.message.Message):
         message.flags |= dns.flags.RD
+        message.use_edns(edns=0, payload=1232)
 
-        result = await dns.asyncquery.udp(message, self._get_upstream_dns())
-        return result.to_wire()
+        if message.options:
+            opts = [opt for opt in message.options if not isinstance(opt, ECSOption)]
+            if len(opts) != len(message.options):
+                message.use_edns(edns=0, payload=1232, options=opts)
+
+        upstream = self._get_upstream_dns() 
+        resp = await dns.asyncquery.tcp(message, upstream, timeout=2.0)
+        return resp.to_wire() 
 
     def _get_upstream_dns(self) -> str:
         return next(self.upstream_dns)
@@ -75,12 +83,13 @@ class Resolver:
 
     @staticmethod
     def _redirect_response(message: dns.message.Message, ip: str) -> bytes:
-        question = message.question[0]
-
-        response = dns.message.make_response(message, recursion_available=True)
-        rrset = dns.rrset.from_text(question.name.to_text(), 60, dns.rdataclass.IN, dns.rdatatype.A, ip)
-
-        response.answer.append(rrset)
-        response.set_rcode(dns.rcode.NOERROR)
+        q = message.question[0]
         
+        response = dns.message.make_response(message, recursion_available=True)
+        response.use_edns(edns=0, payload=1232)
+        if q.rdtype in (dns.rdatatype.A, dns.rdatatype.ANY):
+            rrset = dns.rrset.from_text(q.name.to_text(), 60, dns.rdataclass.IN, dns.rdatatype.A, ip)
+            response.answer.append(rrset)
+
+        response.set_rcode(dns.rcode.NOERROR)
         return response.to_wire()

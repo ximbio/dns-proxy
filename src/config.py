@@ -28,7 +28,7 @@ class Config(BaseSettings):
     DOT_KEY_FILE: str
 
     LOG_LEVEL: str = "INFO"
-    UPSTREAM_DNS: list[str] = ["1.1.1.1"]
+    UPSTREAM_DNS: list[str] = ["1.1.1.1", "8.8.8.8"]
 
 settings = Config()
 

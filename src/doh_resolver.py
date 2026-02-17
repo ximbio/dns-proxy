@@ -28,6 +28,9 @@ async def get_query(dns: str):
     query = decode_b64(dns)
     response = await app.state.resolver.resolve(query)
 
+    if response is None:
+        raise HTTPException(status_code=400, detail="Malformed DNS query")
+
     return Response(response, media_type=DNS_CT)
 
 
@@ -38,12 +41,14 @@ async def post_query(request: Request):
     if content_type != DNS_CT:
         raise HTTPException(
             status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-            detial=f"Content-Type must be {DNS_CT}"
+            detail=f"Content-Type must be {DNS_CT}"
         )
 
     query = await request.body()
     response = await app.state.resolver.resolve(query)
-
+    if response is None:
+        raise HTTPException(status_code=400, detail="Malformed DNS query")
+    
     return Response(response, media_type=DNS_CT)
 
 
