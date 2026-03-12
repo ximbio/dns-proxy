@@ -1,14 +1,15 @@
 from enum import Enum
 
+import dns.rdatatype
 from pydantic import BaseModel
 
 from src.config import Rules
-
 
 class Action(Enum):
     BLOCK = "BLOCK"
     REDIRECT = "REDIRECT"
     BYPASS = "BYPASS"
+    NODATA = "NODATA"
 
 
 class Decision(BaseModel):
@@ -40,15 +41,21 @@ class Policy():
             else:
                 self.block_exact.add(domain)
     
-    def decide(self, qname: str) -> Decision:
+    def decide(self, qname: str, rdtype: dns.rdatatype.RdataType) -> Decision:
         qname = self._norm(qname)
 
-        if qname in self.redirect_exact:
-            return Decision(action=Action.REDIRECT, redirect_ip=self.redirect_exact[qname])
-        
-        base = self._check_wildcard(qname, self.redirect_wildcard)
-        if base:
-            return Decision(action=Action.REDIRECT, redirect_ip=self.redirect_wildcard[base])
+        redirect_ip = self.redirect_exact.get(qname) 
+
+        if redirect_ip is None:
+            base = self._check_wildcard(qname, self.redirect_wildcard)
+            if base:
+                redirect_ip = self.redirect_wildcard.get(base)
+            
+        if redirect_ip is not None:
+            if rdtype == dns.rdatatype.HTTPS:
+                return Decision(action=Action.NODATA)
+
+            return Decision(action=Action.REDIRECT, redirect_ip=redirect_ip)
         
         if qname in self.block_exact:
             return Decision(action=Action.BLOCK)    
